@@ -1,0 +1,30 @@
+--- Virtual Environment ---
+
+Ignore the entire 'venv' folder
+
+venv/
+
+--- Data ---
+
+Ignore the entire 'data' folder and all 20,000 images
+
+data/
+
+--- Python Cache ---
+
+Ignore the temporary files Python creates
+
+pycache/
+*.pyc
+
+--- VS Code ---
+
+Ignore VS Code editor settings
+
+.vscode/
+
+--- Downloaded Zips ---
+
+Ignore any zip files you downloaded
+
+*.zip
