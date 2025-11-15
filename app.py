@@ -7,8 +7,9 @@
 #    (scaling pixels to [-1, 1]).
 # 2. This app will now use that *exact same* normalization.
 #
-# This means the app and the trainer are finally speaking the same language.
-# This must be it.
+# *** NEW FIX: The webcam feed is mirrored! ***
+# I'll use 'cv2.flip()' to un-mirror the image so my
+# right hand shows up on the right side of the screen.
 
 import streamlit as st
 import tensorflow as tf
@@ -43,31 +44,25 @@ def load_my_model(model_path):
         st.stop()
 
 # --- 2. Image Processing Function (THE *FINAL* CORRECTED VERSION) ---
-def process_image(image_file):
-    """Takes the webcam snapshot and prepares it for the model."""
+# *** This function now accepts a NumPy array, not a file object ***
+def process_image(img_array):
+    """Takes the webcam snapshot (as a NumPy array) and prepares it for the model."""
     
-    # 1. Open the image using PIL
-    img = Image.open(image_file)
-    
-    # 2. Convert to NumPy array
-    img_array = np.array(img)
-    
-    # 3. Use OpenCV to convert to Grayscale
+    # 1. Use OpenCV to convert to Grayscale
     gray_img = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
     
-    # 4. Resize to 224x224
+    # 2. Resize to 224x224
     resized_img = cv2.resize(gray_img, IMG_SIZE)
     
-    # 5. Stack channels (to "fake" RGB for the model)
+    # 3. Stack channels (to "fake" RGB for the model)
     rgb_img = cv2.cvtColor(resized_img, cv2.COLOR_GRAY2RGB)
     
-    # 6. Expand dimensions
+    # 4. Expand dimensions
     # Change shape from (224, 224, 3) to (1, 224, 224, 3)
     img_batch = np.expand_dims(rgb_img, axis=0)
     
-    # 7. NORMALIZE (THE *CORRECT* WAY)
+    # 5. NORMALIZE (THE *CORRECT* WAY)
     # This applies the MobileNetV2 scaling (pixels -> [-1, 1])
-    # This is the *exact* same function used in the trainer.
     processed_batch = preprocess_input(img_batch)
     
     # I'll return the grayscale image just to show what we're looking at
@@ -89,13 +84,28 @@ if model:
 
     if picture is not None:
         
-        # 1. Show the original
-        st.image(picture, caption="Here's the original snapshot:", use_container_width=True)
+        # --- THIS IS THE FIX ---
+        
+        # 1. Load the file-like object into a PIL Image
+        pil_img = Image.open(picture)
+        
+        # 2. Convert to a NumPy array (which is what OpenCV uses)
+        original_img_array = np.array(pil_img)
+        
+        # 3. Flip the image horizontally (1 = y-axis flip)
+        # This "un-mirrors" the webcam feed so your right hand is on the right
+        flipped_img_array = cv2.flip(original_img_array, 1)
+        
+        # --- END OF FIX ---
+
+        
+        # 1. Show the original (but now un-mirrored) image
+        st.image(flipped_img_array, caption="Here's the (un-mirrored) snapshot:", use_container_width=True)
         
         with st.spinner("Analyzing... (for real this time)..."):
             
-            # 2. Process the image (Correctly this time)
-            processed_img_batch, gray_image_to_show = process_image(picture)
+            # 2. Process the *flipped* image for the model
+            processed_img_batch, gray_image_to_show = process_image(flipped_img_array)
             
             # 3. Make the prediction!
             prediction = model.predict(processed_img_batch)
